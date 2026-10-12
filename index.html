@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Synapse</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Dashboard Panel -->
+        <div class="dashboard glass-panel">
+            <h1>Project Synapse</h1>
+
+            <div class="panel-section split-panel">
+                <div>
+                    <h3>Active Turn</h3>
+                    <div id="turn-indicator" class="turn-box">TEAM CHOICE</div>
+                </div>
+                <div>
+                    <h3>Mission Time</h3>
+                    <div id="timer-display" class="timer-box">00:00</div>
+                </div>
+            </div>
+
+            <div id="hint" class="hint"></div>
+
+            <div class="panel-section">
+                <h3>Override Code</h3>
+                <div class="code-display" id="code-display">
+                    <div class="code-slot">_</div>
+                    <div class="code-slot">_</div>
+                    <div class="code-slot">_</div>
+                    <div class="code-slot">_</div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>Move History</h3>
+                <div class="log-box" id="log-box">
+                    <p class="sys-msg">System Initialized. Awaiting first move.</p>
+                </div>
+            </div>
+
+            <button class="rulebook-btn" onclick="openRulebookModal()">📖 View Rulebook</button>
+            <button class="manual-reset-btn" onclick="openManualResetModal()">Manual Override Reset</button>
+        </div>
+
+        <!-- Game Board -->
+        <div class="board-wrapper glass-panel">
+            <div class="board" id="board">
+                <!-- Cells and Drones will be injected here via JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Rulebook Modal -->
+    <div id="rulebook-modal" class="modal hidden">
+        <div class="modal-content glass-modal rulebook-content">
+            <h2 style="color: #4da6ff;">PROJECT SYNAPSE RULEBOOK</h2>
+            <div class="rules-text">
+                <h4>Mission</h4>
+                <p>Move all three drones from their START squares to their own TARGET squares, then read off the 4-digit override code. The team may choose any drone for the very first move; after that, the board decides who moves.</p>
+                <table class="route-table">
+                    <tr><th>Drone</th><th>Start</th><th>Target</th></tr>
+                    <tr><td>Red Rover</td><td>A1</td><td>A8</td></tr>
+                    <tr><td>Blue Probe</td><td>B1</td><td>D8</td></tr>
+                    <tr><td>Yellow Orbiter</td><td>C1</td><td>H8</td></tr>
+                </table>
+
+                <h4>Movement</h4>
+                <p>Every move is exactly one square up, down, left or right. No diagonals, and no leaving the board. Two drones can never occupy the same square.</p>
+                <p><strong>Burned Path:</strong> a drone may never land on a square it has already occupied during the current run. Its own START square counts as burned from the beginning. Squares that other drones have visited are fine.</p>
+
+                <h4>The Telemetry Chain</h4>
+                <p>The color of the square a drone just landed on decides which drone must move next. A Blue square means the Blue Probe moves next, even if the Red Rover just moved.</p>
+
+                <h4>Targets and locking</h4>
+                <p>A drone that lands on its own TARGET locks permanently and becomes an immovable wall.</p>
+                <p><strong>Lock order:</strong> the Blue Probe and Yellow Orbiter may lock in either order. The Red Rover must lock <strong>last</strong>.</p>
+                <p>A drone may pass through an empty TARGET that belongs to another drone; it counts as a blank square.</p>
+                <p><strong>Free choice:</strong> TARGET squares have no color, so after any lock or any target landing, the team picks which active drone moves next. In this game: click the drone you want to move, then click a highlighted square. START squares are off-limits to every drone except the one that began there, so they never give a free choice.</p>
+
+                <h4>The override code</h4>
+                <p>Four digits are hidden on the board. The code is the order in which a drone first lands on them. Landing on a digit that is already recorded adds nothing, but its tile color still decides who moves next. The code is extracted only when all three drones are locked and all four digits have been recorded.</p>
+
+                <h4>Crashes</h4>
+                <p>Any of these crashes the sequence: all drones return to START and a fresh run begins.</p>
+                <ul>
+                    <li><strong>Hazard Strike:</strong> landing on an Ion Storm, Asteroid or Gravity Well.</li>
+                    <li><strong>Memory Loop:</strong> being forced onto a square that drone has already visited.</li>
+                    <li><strong>Logic Paradox:</strong> the chain names a drone that has no legal move (edges, other drones, hazards, its own burned path, or it is already locked).</li>
+                    <li><strong>Restricted Zone Breach:</strong> landing on another drone's START square.</li>
+                    <li><strong>Launch Sequence Violation:</strong> the Red Rover lands on its TARGET while the Blue Probe or Yellow Orbiter is still unlocked.</li>
+                </ul>
+
+                <h4>Every-turn checklist</h4>
+                <ol>
+                    <li>Move one square; check it is not a hazard, another drone's START, a burned square or an occupied square.</li>
+                    <li>If it is a digit you haven't recorded yet, add it to the code.</li>
+                    <li>If it is the drone's own TARGET, lock it (Red only if both others are locked).</li>
+                    <li>Read the color to find who moves next. On a TARGET, the team chooses.</li>
+                    <li>Check that the next drone has at least one legal move.</li>
+                </ol>
+            </div>
+            <button class="cancel-btn" onclick="closeRulebookModal()">Close Rulebook</button>
+        </div>
+    </div>
+
+    <!-- Crash/Victory Modal -->
+    <div id="crash-modal" class="modal hidden">
+        <div class="modal-content glass-modal">
+            <h2 id="modal-title">SYSTEM HALT</h2>
+            <p id="modal-desc" class="modal-text">Reason goes here.</p>
+            <button class="restart-btn" id="crash-restart-btn" onclick="softRestart()">Restart Sequence</button>
+
+            <!-- Full reset available right on the end screen (security code required) -->
+            <div class="end-reset" id="end-reset">
+                <p class="end-reset-label" id="end-reset-label">Full reset (wipes timer and history)</p>
+                <input type="password" id="end-security-code" placeholder="Enter Security Code...">
+                <button class="cancel-btn" onclick="attemptManualReset('end')">Authorize Full Reset</button>
+                <p id="end-error-msg" class="error-text hidden">Access Denied: Invalid Security Code.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Reset Modal (security code required) -->
+    <div id="reset-modal" class="modal hidden">
+        <div class="modal-content glass-modal">
+            <h2 style="color: #fff;">MANUAL OVERRIDE</h2>
+            <p class="modal-text">Enter security code to completely wipe memory and reset timer.</p>
+            <div class="security-module">
+                <input type="password" id="security-code" placeholder="Enter Security Code...">
+                <button class="restart-btn" onclick="attemptManualReset()">Authorize Reset</button>
+                <p id="error-msg" class="error-text hidden">Access Denied: Invalid Security Code.</p>
+                <button class="cancel-btn" onclick="closeManualResetModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
